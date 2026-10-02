@@ -45,8 +45,42 @@ class TextNormalizer:
             r'\bприм\b\.': 'примечание',
             r'\bт\.д\b\.': 'так далее',
             r'\bт\.п\b\.': 'тому подобное',
+            r'\bтов\b\.': 'товарищу',
         }
+
         self.abbr_compiled = {re.compile(pattern, re.IGNORECASE): repl for pattern, repl in self.abbreviations.items()}
+
+        # 2.1. Аббревиатуры, найденные в корпусе: загланые согласные от 2 до 5 букв
+        # ['БТ', 'ВМК', 'ГБ', 'КВВК', 'КВН', 'КП', 'КПП', 'КПСС', 'МВД', 'МТС', 'НКВД', 'СС', 'ССР', 'СХШ', 'ФБР', 'ФД', 'ЦДЛ', 'ЧК']
+        self.abbrev_uppercase_consonants = {
+            r'\bБТ\b': 'бэ-тэ',
+            r'\bВМК\b': 'вэ-эм-ка',
+            r'\bГБ\b': 'гэ-бэ',
+            r'\bКВВК\b': 'ка-вэ-вэ-ка',
+            r'\bКВН\b': 'ка-вэ-эн',
+            r'\bКП\b': 'ка-пэ',
+            r'\bКПП\b': 'ка-пэ-пэ',
+            r'\bКПСС\b': 'ка-пэ-эсэс',
+            r'\bМВД\b': 'эм-вэ-дэ',
+            r'\bМТС\b': 'эм-тэ-эс',
+            r'\bНКВД\b': 'эн-ка-вэ-дэ',
+            r'\bСС\b': 'эсэс',
+            r'\bССР\b': 'эсэсэр',
+            r'\bСХШ\b': 'эс-хэ-ша',
+            r'\bФБР\b': 'фэ-бэ-эр',
+            r'\bФД\b': 'фэ-дэ',
+            r'\bЦДЛ\b': 'цэ-дэ-эл',
+            r'\bЧК\b': 'че-ка',
+            # с гласными
+            r'\bТГУ\b': 'тэ-гэ-у',
+            r'\bСША\b': 'сэ-шэ-а',
+            r'КПЭ\b': 'ка-пэ'
+        }
+        
+        # Компиляция БЕЗ re.IGNORECASE (флаг убран, регистр учитывается строго)
+        self.abbrev_consonants_compiled = {
+            re.compile(pattern): repl for pattern, repl in self.abbrev_uppercase_consonants.items()
+        }
         
         # 3. Года с предлогами (в 1995 г.)
         self.year_abbrev = re.compile(r'\b(в|к|от|до|с|около)?\s*(\d+)\s*г\.', re.IGNORECASE)
@@ -150,6 +184,10 @@ class TextNormalizer:
         for pattern, replacement in self.abbr_compiled.items():
             text = pattern.sub(replacement, text)
 
+        # 2.1 Раскрытие аббревиатур согласных в верхнем регистре
+        for pattern, replacement in self.abbrev_consonants_compiled.items():
+            text = pattern.sub(replacement, text)
+
         # 3. Раскрытие римских цифр (выполняется до обычных чисел)
         text = self.roman_nums.sub(self._expand_roman, text)
 
@@ -181,8 +219,12 @@ if __name__ == "__main__":
     print(normalizer.normalize("На Волге около 1921 г. произошло событие."), ": На Волге около тысяча девятьсот двадцать первого года произошло событие.")
 
     # Тест числительных и аббревиатур
+    print(normalizer.normalize("Его привезли в НКВД"))
+    # Выведет: "Его привезли в эн-ка-вэ-дэ"
+
+     # Тест числительных и аббревиатур
     print(normalizer.normalize("В XX веке в США было 15 выстрелов!.."))
-    # Выведет: "В двадцатый веке в эс ша а было пятнадцать выстрелов!"
+    # Выведет: "В двадцатый веке в сэ-шэ-а было пятнадцать выстрелов!"
     
     print(normalizer.normalize("Глава IV прим. автора"), ": четвертая глава примечание автора")
     # Выведет: "четвертая глава примечание автора"

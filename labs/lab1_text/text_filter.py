@@ -192,14 +192,14 @@ class TextFilter:
             re.IGNORECASE
         )
 
-        # n. Регулярка для римских цифр
-        #self._roman_numerals_pattern = re.compile(r'\s([IVXLCDM]|[IVXLCDM][IVXLCDM]{1,8})(\s+|\.)')
-
         # 16. Для омографов
         self._homograph_pattern = re.compile(
             rf"(\s|\.|^)({'|'.join(self.HOMOGRAPHS)})(\s|\.|$)", 
             re.IGNORECASE
         )
+
+        # n. Регулярка для римских цифр
+        #self._roman_numerals_pattern = re.compile(r'\s([IVXLCDM]|[IVXLCDM][IVXLCDM]{1,8})(\s+|\.)')
 
     def _has_homograph(self, text: str) -> bool:
         """Проверяет, содержит ли входящая строка слово-омограф из списка.

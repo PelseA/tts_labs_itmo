@@ -23,7 +23,7 @@ from text_filter import TextFilter
 from text_normalizer import TextNormalizer
 
 INPUT_PATH = "../../data/RUSLAN/metadata_RUSLAN_22200.csv"
-OUTPUT_PATH = "../../data/metadata_RUSLAN_22200_normalized.csv"
+OUTPUT_PATH = "../../data/metadata_RUSLAN_22200_normalized_byPelse.csv"
 
 # quoting=csv.QUOTE_NONE is required in both directions: the corpus text contains
 # « » „ “ ” ' and pandas would otherwise read them as field delimiters.

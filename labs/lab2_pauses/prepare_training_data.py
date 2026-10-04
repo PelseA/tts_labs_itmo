@@ -19,9 +19,9 @@ import pandas as pd
 from praatio import textgrid
 import tqdm
 
-RUSLAN_META = '../../data/metadata_RUSLAN_22200_normalized.csv'
-ALIGN_DIR = '../../data/RUSLAN_align_v2/'
-RESULT_PATH = 'data/RUSLAN_pause_metadata.csv'
+RUSLAN_META = '../../data/metadata_RUSLAN_22200_normalized_byPelse.csv'
+ALIGN_DIR = '../../data/RUSLAN_align_byPelse_attempt_2_v2/'
+RESULT_PATH = '../../data/RUSLAN_pause_metadata_byPelse.csv'
 
 def read_text_grids(ruslan: pd.DataFrame, align_root: str) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:   
     """Read the MFA TextGrid of every utterance in `ruslan`.
@@ -61,7 +61,6 @@ def read_text_grids(ruslan: pd.DataFrame, align_root: str) -> tuple[pd.DataFrame
     phn_df = pd.DataFrame(phn_docs)
     return word_df, phn_df, phoneme_sequences
 
-
 def align_text_and_textgrid(tokens: pd.DataFrame, text: str) -> pd.DataFrame:
     """Attach the original text form of each aligned word as `label_raw`.
 
@@ -77,18 +76,24 @@ def align_text_and_textgrid(tokens: pd.DataFrame, text: str) -> pd.DataFrame:
         `tokens` with a `label_raw` column, or `tokens` unchanged if a word is not
         found in `text` — such utterances are dropped later.
     """
+    # 1. Защита от SettingWithCopyWarning: создаем чистую копию объекта
+    tokens = tokens.copy()
+    
     raw_tokens = []
     text_lower = text.lower()
     previous_word = -1
+    
     for t, d, i in tokens[['label', 'duration', 'id']].values:
         if t == '': # Empty, SIL token
             raw_tokens.append('<SIL>')
             continue
         splits = text_lower.split(t, maxsplit=1)
-        if len(splits)==1: # Does not found content!
-            print(f'Error aligning f{i}!')
-            print(t, text, tokens)
+        
+        if len(splits) == 1: # Слово не найдено в тексте
+            # 2. Оптимизация вывода: пишем краткую ошибку, НЕ выводим весь датафрейм tokens целиком
+            print(f'Error aligning for ID {i}! Word "{t}" not found in text.')
             return tokens 
+            
         if previous_word == -1: 
             raw_tokens.append(text[:len(splits[0]+t)].strip())
         else:
@@ -97,8 +102,10 @@ def align_text_and_textgrid(tokens: pd.DataFrame, text: str) -> pd.DataFrame:
         text_lower = splits[1]
         text = text[len(splits[0] + t):]
         previous_word = len(raw_tokens)-1
-    if len(text) and (previous_word>=0):
+        
+    if len(text) and (previous_word >= 0):
         raw_tokens[previous_word] += text.strip()
+        
     tokens['label_raw'] = raw_tokens
     return tokens
 
@@ -114,6 +121,7 @@ def add_pause_labels(align: pd.DataFrame) -> pd.DataFrame:
     Returns:
         `align` with the three label columns.
     """
+    align = align.copy() # Защита от SettingWithCopyWarning: создаем чистую копию объекта
     is_last_word = []
     pause_after = []
     pause_duration = []

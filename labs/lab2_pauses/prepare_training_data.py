@@ -1,13 +1,12 @@
-"""Build pause predictor training data — lab 2.
+"""Создание обучающих данных для предсказателя пауз — лабораторная работа №2.
 
-Joins the lab 1 normalized metadata with the MFA word alignment and writes one row per
-word to `data/RUSLAN_pause_metadata.csv`::
+Скрипт объединяет нормализованные метаданные из лабораторной работы №1 с результатами выравнивания слов (MFA) и записывает в файл `data/RUSLAN_pause_metadata.csv` по одной строке на каждое слово::
 
     id|label|label_raw|duration|is_last_word|is_pause_after|pause_duration|set
 
-Utterances whose id ends in 0 or 5 go to `test`, the rest to `train`.
+Фразы, идентификатор которых оканчивается на 0 или 5, попадают в набор `test`, остальные — в `train`.
 
-Run from the lab directory::
+Запуск из директории лабораторной работы::
 
     python prepare_training_data.py
 """
@@ -24,16 +23,16 @@ ALIGN_DIR = '../../data/RUSLAN_align_byPelse_attempt_2_v2/'
 RESULT_PATH = '../../data/RUSLAN_pause_metadata_byPelse.csv'
 
 def read_text_grids(ruslan: pd.DataFrame, align_root: str) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:   
-    """Read the MFA TextGrid of every utterance in `ruslan`.
+    """Считывание MFA-файлов TextGrid для каждого высказывания в `ruslan`.
 
     Args:
-        ruslan: Metadata with `id` and `nrm` columns.
-        align_root: Directory with `{id}.TextGrid` files.
+        ruslan: Метаданные со столбцами `id` и `nrm`.
+        align_root: Директория с файлами `{id}.TextGrid`.
 
     Returns:
-        Word intervals (`label`, `duration`, `id`; silence has label ``""``), phone
-        intervals (same columns; silence is ``"<SIL>"``), and one space-joined phone
-        string per metadata row (``""`` when the TextGrid is missing).
+        Интервалы слов (`label`, `duration`, `id`; для пауз метка ``""``), интервалы
+        фонем (те же столбцы; для пауз ``"<SIL>"``) и строку фонем, объединенных
+        пробелами, для каждой строки метаданных (``""``, если файл TextGrid отсутствует).
     """
     word_docs = []
     phn_docs = []
@@ -62,19 +61,19 @@ def read_text_grids(ruslan: pd.DataFrame, align_root: str) -> tuple[pd.DataFrame
     return word_df, phn_df, phoneme_sequences
 
 def align_text_and_textgrid(tokens: pd.DataFrame, text: str) -> pd.DataFrame:
-    """Attach the original text form of each aligned word as `label_raw`.
+    """Прикрепить исходную текстовую форму каждого выровненного слова как `label_raw`.
 
-    MFA labels are lowercase and carry no punctuation. `label_raw` restores the case
-    and appends the punctuation that follows each word; text before the first word goes
-    to the first word. Silence intervals get ``"<SIL>"``.
+    Метки MFA написаны строчными буквами и не содержат знаков препинания. `label_raw` восстанавливает регистр
+    и добавляет знаки препинания после каждого слова; текст перед первым словом
+    до первого слова. Интервалы тишины получают ``"<SIL>"``.
 
     Args:
-        tokens: Word intervals of one utterance, as returned by :func:`read_text_grids`.
-        text: Normalized text of the same utterance.
+        токены: интервалы между словами одного высказывания, возвращаемые :func:`read_text_grids`.
+        текст: Нормализованный текст одного и того же высказывания.
 
     Returns:
-        `tokens` with a `label_raw` column, or `tokens` unchanged if a word is not
-        found in `text` — such utterances are dropped later.
+        `tokens` со столбцом `label_raw` или `tokens` без изменений, если слово не
+        найдено в `text` — такие высказывания позже опускаются.
     """
     # 1. Защита от SettingWithCopyWarning: создаем чистую копию объекта
     tokens = tokens.copy()
@@ -110,16 +109,16 @@ def align_text_and_textgrid(tokens: pd.DataFrame, text: str) -> pd.DataFrame:
     return tokens
 
 def add_pause_labels(align: pd.DataFrame) -> pd.DataFrame:
-    """Mark which words are followed by a pause, and for how long.
+    """Отметить слова, после которых следует пауза, и указать длительность паузы.
 
-    Adds `is_last_word`, `is_pause_after` and `pause_duration` (seconds). Silence rows
-    themselves get ``False`` / ``0.0``; silence before the first word is ignored.
+    Добавляет столбцы `is_last_word`, `is_pause_after` и `pause_duration` (в секундах). Для строк,
+    соответствующих тишине, устанавливаются значения ``False`` / ``0.0``; тишина перед первым словом игнорируется.
 
     Args:
-        align: Word intervals of one utterance, in order.
+        align: Упорядоченные временные интервалы слов одного высказывания.
 
     Returns:
-        `align` with the three label columns.
+        `align` с тремя дополнительными столбцами меток.
     """
     align = align.copy() # Защита от SettingWithCopyWarning: создаем чистую копию объекта
     is_last_word = []
@@ -167,6 +166,20 @@ def main() -> None:
     for n, i in tqdm.tqdm(ruslan[['nrm', 'id']].values):
         tokens = word_df[word_df.id==i]
         aligns.append(align_text_and_textgrid(tokens, n))
+
+    # --- БЛОК ВИЗУАЛИЗАЦИИ НЕСКОЛЬКИХ СТРОК ALIGNS ---
+    print("\n=== Пример исходных датафреймов aligns до обработки пауз ===")
+    for idx, df_example in enumerate(aligns[:2]): # Смотрим на первые 2 датафрейма
+        print(f"\n[Датафрейм #{idx + 1}] Всего строк: {len(df_example)}")
+        # Метод head(5) покажет первые 5 строк каждого датафрейма
+        try:
+            # Если вы в Jupyter/Colab, display() сделает красивую интерактивную табличку
+            display(df_example.head(10)) 
+        except NameError:
+            # Если запускаете просто скриптом .py в терминале, сработает print()
+            print(df_example.head(10))
+    print("============================================================\n")
+    # -------------------------------------------------
 
     # Creating labels for pause predictor training
     aligns = [add_pause_labels(a) for a in aligns]

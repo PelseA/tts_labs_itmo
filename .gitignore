@@ -19,3 +19,4 @@ labs/lab1_text/__pycache__/
 labs/lab1_text/data/.ipynb_checkpoints/
 labs/lab2_pauses/.ipynb_checkpoints/
 labs/lab2_pauses/__pycache__/
+labs/lab3_g2p/data/russian_mfa.dict
